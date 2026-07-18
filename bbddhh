@@ -1,0 +1,1037 @@
+-- // DEAD-HUB Stealth UI Library for Trident Survival //
+-- Reusable, undetectable library built using raw UI instances & stealth naming.
+-- Designed to bypass CoreGui scanning anti-cheats.
+
+local Library = {}
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local RunService = cloneref(game:GetService("RunService"))
+
+local CoreGui = nil
+pcall(function()
+    CoreGui = cloneref(game:GetService("CoreGui"))
+end)
+
+-- Wait for the local player to be fully loaded
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do
+    task.wait()
+    LocalPlayer = Players.LocalPlayer
+end
+
+-- Clean up any existing instances of this GUI to prevent duplicates
+local oldGui = nil
+pcall(function()
+    if gethui then
+        oldGui = gethui():FindFirstChild("InventoryGui")
+    else
+        local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5)
+        oldGui = (CoreGui and CoreGui:FindFirstChild("InventoryGui")) or (playerGui and playerGui:FindFirstChild("InventoryGui"))
+    end
+    if oldGui then
+        oldGui:Destroy()
+    end
+end)
+
+-- Safe parenting to evade anti-cheat scans
+local function getSafeParent()
+    if gethui then
+        local success, result = pcall(gethui)
+        if success and result then
+            return result
+        end
+    end
+    if CoreGui then
+        local success, result = pcall(function() return CoreGui end)
+        if success and result then
+            return result
+        end
+    end
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 10)
+    if playerGui then
+        return playerGui
+    end
+    return nil
+end
+
+-- Draggable implementation for the entire frame
+local function makeDraggable(frame)
+    local dragging = false
+    local dragInput, dragStart, startPos
+    
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging and dragStart and startPos then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Helper to add spacing between letters
+local function spaceOutLetters(text)
+    local upperText = string.upper(text)
+    local result = ""
+    for i = 1, #upperText do
+        local char = upperText:sub(i, i)
+        result = result .. char .. (i < #upperText and " " or "")
+    end
+    return result
+end
+
+function Library:CreateWindow()
+    local parent = getSafeParent()
+    if not parent then 
+        warn("[DEADHUB] Failed to find a valid GUI parent container.")
+        return nil 
+    end
+    
+    local Window = {}
+    
+    -- Main ScreenGui (stealth name)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "InventoryGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = parent
+    
+    -- Outer Window Frame (Pure Black, Size 580x430)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "InventoryFrame"
+    mainFrame.Size = UDim2.new(0, 580, 0, 430)
+    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -215)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Pure Black
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = false 
+    mainFrame.Active = true
+    mainFrame.Visible = false -- Initially hidden until splash animation finishes
+    mainFrame.Parent = screenGui
+    
+    -- Thinner Darker Red Outer Outline Stroke (1.0px)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.0
+    stroke.Color = Color3.fromRGB(140, 25, 35) -- Darker Crimson Red Outline
+    stroke.LineJoinMode = Enum.LineJoinMode.Miter
+    stroke.Parent = mainFrame
+    
+    -- First Inner Frame (Dark Gray background, inset by 3px)
+    local innerFrame1 = Instance.new("Frame")
+    innerFrame1.Name = "InventoryBorder1" -- Stealth name
+    innerFrame1.Size = UDim2.new(1, -6, 1, -6) -- 3px inset from all sides
+    innerFrame1.Position = UDim2.new(0, 3, 0, 3)
+    innerFrame1.BackgroundColor3 = Color3.fromRGB(18, 18, 22) -- First Dark Gray
+    innerFrame1.BorderSizePixel = 0
+    innerFrame1.Parent = mainFrame
+    
+    local innerStroke1 = Instance.new("UIStroke")
+    innerStroke1.Thickness = 1.0
+    innerStroke1.Color = Color3.fromRGB(35, 35, 40)
+    innerStroke1.LineJoinMode = Enum.LineJoinMode.Miter
+    innerStroke1.Parent = innerFrame1
+    
+    -- Second Inner Frame (Slightly Lighter Dark Gray background, inset by another 3px)
+    local innerFrame2 = Instance.new("Frame")
+    innerFrame2.Name = "InventoryBorder2" -- Stealth name
+    innerFrame2.Size = UDim2.new(1, -6, 1, -6) -- Another 3px inset
+    innerFrame2.Position = UDim2.new(0, 3, 0, 3)
+    innerFrame2.BackgroundColor3 = Color3.fromRGB(26, 26, 30) -- Slightly Lighter Dark Gray
+    innerFrame2.BorderSizePixel = 0
+    innerFrame2.Parent = innerFrame1
+    
+    local innerStroke2 = Instance.new("UIStroke")
+    innerStroke2.Thickness = 1.0
+    innerStroke2.Color = Color3.fromRGB(40, 40, 45)
+    innerStroke2.LineJoinMode = Enum.LineJoinMode.Miter
+    innerStroke2.Parent = innerFrame2
+    
+    -- Front Black Text Label (Letters spaced out: D E A D H U B)
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Size = UDim2.new(0, 300, 0, 24)
+    titleLabel.Position = UDim2.new(0.5, 0, 0, -18)
+    titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = spaceOutLetters("DEADHUB") -- Spaced out letters (D E A D H U B)
+    titleLabel.TextColor3 = Color3.fromRGB(15, 15, 15) -- Pure Black matching background
+    titleLabel.TextSize = 19
+    titleLabel.Font = Enum.Font.SourceSansBold
+    titleLabel.Parent = mainFrame
+    
+    local strokeFront = Instance.new("UIStroke")
+    strokeFront.Thickness = 1.0 -- Thinner crisp outline
+    strokeFront.Color = Color3.fromRGB(140, 25, 35) -- Matching Darker Crimson Red
+    strokeFront.Parent = titleLabel
+    
+    -- Solid Decorative Top Line (parented to innerFrame2)
+    local topLine = Instance.new("Frame")
+    topLine.Name = "InventoryLine"
+    topLine.Size = UDim2.new(1, -4, 0, 1) -- 1px thin line
+    topLine.Position = UDim2.new(0, 2, 0, 35) -- 35px lower
+    topLine.BackgroundColor3 = Color3.fromRGB(140, 25, 35) -- Matching Darker Crimson Red
+    topLine.BorderSizePixel = 0
+    topLine.Parent = innerFrame2
+    
+    -- 2 Decorative Vertical Lines (dividing the content area into 3 columns)
+    for i = 1, 2 do
+        local vLine = Instance.new("Frame")
+        vLine.Name = "InventoryVerticalLine" .. i
+        vLine.Size = UDim2.new(0, 1, 1, -48) -- Size matches the height offset to leave a small gap at both ends
+        vLine.Position = UDim2.new(i * 0.333, 0, 0, 44) -- Starts at Y=44 (9px gap below the top line at Y=35)
+        vLine.BackgroundColor3 = Color3.fromRGB(200, 200, 200) -- Dark white / Light gray
+        vLine.BackgroundTransparency = 0.88 -- Extremely subtle, high-end opacity
+        vLine.BorderSizePixel = 0
+        vLine.Parent = innerFrame2
+    end
+    
+    -- Horizontal Tab buttons Container (placed above the red line, parented to innerFrame2)
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Name = "TabPanel" -- Stealth name
+    tabContainer.Size = UDim2.new(1, -20, 0, 35) -- 35px height fits above line
+    tabContainer.Position = UDim2.new(0, 10, 0, 0)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.BorderSizePixel = 0
+    tabContainer.Parent = innerFrame2
+    
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    tabLayout.Padding = UDim.new(0, 12)
+    tabLayout.Parent = tabContainer
+    
+    -- Content Pages Container (occupies space below the red line, parented to innerFrame2)
+    local contentContainer = Instance.new("Frame")
+    contentContainer.Name = "Container" -- Stealth name
+    contentContainer.Size = UDim2.new(1, -20, 1, -50)
+    contentContainer.Position = UDim2.new(0, 10, 0, 42)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.BorderSizePixel = 0
+    contentContainer.Parent = innerFrame2
+    
+    -- Tabs management
+    
+    -- Tabs management
+    local tabsList = {}
+    local activeTab = nil
+    local activePage = nil
+    local tabCount = 0
+    
+    function Window:AddTab(rawName)
+        tabCount = tabCount + 1
+        local spacedName = spaceOutLetters(rawName) -- Spaced out tab name letters (e.g. C O M B A T)
+        
+        -- Add vertical divider line if this is not the first tab
+        if tabCount > 1 then
+            local divider = Instance.new("Frame")
+            divider.Name = "TabDivider"
+            divider.Size = UDim2.new(0, 1, 0, 14) -- 14px high vertical separator line
+            divider.BackgroundColor3 = Color3.fromRGB(140, 25, 35) -- Matching Darker Crimson Red
+            divider.BackgroundTransparency = 0.4 -- Faded look for cleaner design
+            divider.BorderSizePixel = 0
+            divider.LayoutOrder = tabCount * 2 - 2
+            divider.Parent = tabContainer
+        end
+        
+        local tabButton = Instance.new("TextButton")
+        tabButton.Name = "ItemSlot" -- Stealth name
+        tabButton.BackgroundTransparency = 1
+        tabButton.Text = spacedName
+        tabButton.TextColor3 = Color3.fromRGB(26, 26, 30) -- Matches the innerFrame2 background dark gray
+        tabButton.TextSize = 14 
+        tabButton.Font = Enum.Font.SourceSansBold
+        tabButton.Size = UDim2.new(0, 0, 1, 0) -- Width calculated dynamically by Roblox
+        tabButton.AutomaticSize = Enum.AutomaticSize.X -- Perfect pixel fit
+        tabButton.LayoutOrder = tabCount * 2 - 1
+        tabButton.Parent = tabContainer
+        
+        -- Thinner Red outline for the tab text
+        local buttonStroke = Instance.new("UIStroke")
+        buttonStroke.Thickness = 1.0 
+        buttonStroke.Color = Color3.fromRGB(140, 25, 35) -- Matching Darker Crimson Red
+        buttonStroke.Transparency = 0.55 -- Semi-transparent outline for inactive tabs
+        buttonStroke.Parent = tabButton
+        
+        -- Each tab has 3 column frames (left, middle, right) matching the 2 vertical divider lines
+        local cols = {}
+        local colAligns = {
+            Enum.HorizontalAlignment.Left,   -- col1: flush left
+            Enum.HorizontalAlignment.Left,   -- col2: left of middle column
+            Enum.HorizontalAlignment.Right,  -- col3: flush right
+        }
+        local colPadLeft  = {2, 6, 0}  -- col1 nearly flush, col2 normal, col3 no left pad
+        local colPadRight = {0, 0, 0}  -- col3 flush right edge
+
+        for c = 1, 3 do
+            local col = Instance.new("ScrollingFrame")
+            col.Name = rawName .. "Col" .. c
+            col.Size = UDim2.new(0.333, -2, 1, 0)
+            col.Position = UDim2.new((c - 1) * 0.333, 1, 0, 0)
+            col.BackgroundTransparency = 1
+            col.BorderSizePixel = 0
+            col.ScrollBarThickness = 0 -- Start hidden to avoid rendering default vertical lines
+            col.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 70)
+            col.Visible = false
+            col.Parent = contentContainer
+            
+            local colLayout = Instance.new("UIListLayout")
+            colLayout.Padding = UDim.new(0, 3) -- Reduced spacing between items
+            colLayout.HorizontalAlignment = colAligns[c]
+            colLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            colLayout.Parent = col
+            
+            local colPad = Instance.new("UIPadding")
+            colPad.PaddingLeft = UDim.new(0, colPadLeft[c])
+            colPad.PaddingRight = UDim.new(0, colPadRight[c])
+            colPad.PaddingTop = UDim.new(0, 6)
+            colPad.Parent = col
+            
+            local function updateScroll()
+                local contentHeight = colLayout.AbsoluteContentSize.Y
+                col.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 10)
+                -- Only show the scrollbar (thickness = 2) if items overflow the visible height
+                if contentHeight > col.AbsoluteSize.Y and col.AbsoluteSize.Y > 0 then
+                    col.ScrollBarThickness = 2
+                else
+                    col.ScrollBarThickness = 0
+                end
+            end
+            colLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateScroll)
+            col:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScroll)
+            
+            cols[c] = col
+        end
+        
+        local function select()
+            if activeTab then
+                local prevStroke = activeTab:FindFirstChildOfClass("UIStroke")
+                if prevStroke then
+                    TweenService:Create(prevStroke, TweenInfo.new(0.15), {Transparency = 0.55}):Play()
+                end
+            end
+            if activePage then
+                for _, c in ipairs(activePage) do c.Visible = false end
+            end
+            
+            activeTab = tabButton
+            activePage = cols
+            for _, c in ipairs(cols) do c.Visible = true end
+            TweenService:Create(buttonStroke, TweenInfo.new(0.15), {Transparency = 0}):Play()
+        end
+        
+        tabButton.MouseButton1Click:Connect(select)
+        
+        tabButton.MouseEnter:Connect(function()
+            if activeTab ~= tabButton then
+                TweenService:Create(buttonStroke, TweenInfo.new(0.12), {Transparency = 0.25}):Play() -- Light up outline on hover
+            end
+        end)
+        tabButton.MouseLeave:Connect(function()
+            if activeTab ~= tabButton then
+                TweenService:Create(buttonStroke, TweenInfo.new(0.12), {Transparency = 0.55}):Play()
+            end
+        end)
+        
+        if tabCount == 1 then
+            select()
+        end
+        
+        local Tab = {}
+        
+        -- Add Button Component to Page (Small dark gray square, sharp corners, red outline, left column)
+        function Tab:AddButton(text, callback)
+            local buttonFrame = Instance.new("Frame")
+            buttonFrame.Name = "ButtonFrame"
+            buttonFrame.Size = UDim2.new(0, 160, 0, 28) -- Small square fitting the left column (~33% of 560px)
+            buttonFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 34) -- Dark Gray
+            buttonFrame.BorderSizePixel = 0 -- Sharp corners, no UICorner
+            buttonFrame.Parent = page
+            
+            local buttonStroke = Instance.new("UIStroke")
+            buttonStroke.Thickness = 1.0
+            buttonStroke.Color = Color3.fromRGB(140, 25, 35) -- Sharp Crimson Red outline
+            buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            buttonStroke.LineJoinMode = Enum.LineJoinMode.Miter
+            buttonStroke.Parent = buttonFrame
+            
+            local textBtn = Instance.new("TextButton")
+            textBtn.Name = "ItemSlotButton"
+            textBtn.Size = UDim2.new(1, 0, 1, 0)
+            textBtn.BackgroundTransparency = 1
+            textBtn.Text = spaceOutLetters(text)
+            textBtn.TextColor3 = Color3.fromRGB(200, 200, 205)
+            textBtn.TextSize = 13
+            textBtn.Font = Enum.Font.SourceSansBold
+            textBtn.Parent = buttonFrame
+            
+            textBtn.MouseEnter:Connect(function()
+                TweenService:Create(buttonFrame, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(36, 36, 42)}):Play()
+            end)
+            textBtn.MouseLeave:Connect(function()
+                TweenService:Create(buttonFrame, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30, 30, 34)}):Play()
+            end)
+            
+            textBtn.MouseButton1Click:Connect(function()
+                -- Fast border color flash on click (Red -> White -> Red)
+                buttonStroke.Color = Color3.fromRGB(255, 255, 255)
+                task.wait(0.08)
+                buttonStroke.Color = Color3.fromRGB(140, 25, 35)
+                
+                if callback then
+                    task.spawn(callback)
+                end
+            end)
+        end
+        
+        -- Add Toggle Component to Page
+        -- col = 1 (left), 2 (middle), 3 (right). Defaults to 1.
+        function Tab:AddToggle(text, default, callback, col)
+            local target = cols[col or 1]
+            local enabled = default or false
+            
+            local row = Instance.new("TextButton")
+            row.Name = "ToggleRow"
+            row.Size = UDim2.new(1, -8, 0, 18) -- Reduced height for less spacing
+            row.BackgroundTransparency = 1
+            row.Text = ""
+            row.Parent = target
+            
+            -- Small square checkbox (12x12px, sharp corners, flush left)
+            local box = Instance.new("Frame")
+            box.Name = "ToggleBox"
+            box.Size = UDim2.new(0, 12, 0, 12)
+            box.Position = UDim2.new(0, 0, 0.5, -6)
+            box.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+            box.BorderSizePixel = 0
+            box.Parent = row
+            
+            local boxStroke = Instance.new("UIStroke")
+            boxStroke.Thickness = 1.0
+            boxStroke.Color = Color3.fromRGB(140, 25, 35)
+            boxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            boxStroke.LineJoinMode = Enum.LineJoinMode.Miter -- Ensures perfectly sharp 90-degree toggle box corners
+            boxStroke.Parent = box
+            
+            local label = Instance.new("TextLabel")
+            label.Name = "ToggleLabel"
+            label.Size = UDim2.new(1, -18, 1, 0)
+            label.Position = UDim2.new(0, 18, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = text
+            label.TextColor3 = Color3.fromRGB(200, 200, 205) -- Always bright white-gray
+            label.TextSize = 12
+            label.Font = Enum.Font.SourceSansBold
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = row
+            
+            local function refresh(instant)
+                local targetColor = enabled and Color3.fromRGB(140, 25, 35) or Color3.fromRGB(30, 30, 34)
+                if instant then
+                    box.BackgroundColor3 = targetColor
+                else
+                    TweenService:Create(box, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        BackgroundColor3 = targetColor
+                    }):Play()
+                end
+            end
+            
+            row.MouseButton1Click:Connect(function()
+                enabled = not enabled
+                
+                -- Pop animation
+                TweenService:Create(box, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 10, 0, 10),
+                    Position = UDim2.new(0, 1, 0.5, -5)
+                }):Play()
+                task.wait(0.08)
+                TweenService:Create(box, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 12, 0, 12),
+                    Position = UDim2.new(0, 0, 0.5, -6)
+                }):Play()
+                
+                refresh(false) -- Smooth animation on click
+                if callback then task.spawn(callback, enabled) end
+            end)
+            
+            refresh(true) -- Instant on start
+        end
+        
+        -- Add Slider Component to Page
+        -- col = 1 (left), 2 (middle), 3 (right). Defaults to 1.
+        -- Features 100% sharp 90-degree corners on borders and fill bar.
+        function Tab:AddSlider(text, min, max, default, callback, col)
+            local target = cols[col or 1]
+            local value = default or min
+            local dragging = false
+            
+            local row = Instance.new("Frame")
+            row.Name = "SliderRow"
+            row.Size = UDim2.new(1, -8, 0, 36)
+            row.BackgroundTransparency = 1
+            row.Parent = target
+            
+            -- Title text for the slider
+            local label = Instance.new("TextLabel")
+            label.Name = "SliderLabel"
+            label.Size = UDim2.new(0.7, 0, 0, 16)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = text
+            label.TextColor3 = Color3.fromRGB(200, 200, 205) -- Bright white-gray
+            label.TextSize = 12
+            label.Font = Enum.Font.SourceSansBold
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = row
+            
+            -- Slider track (Background container) - Thicker (14px)
+            local track = Instance.new("TextButton")
+            track.Name = "SliderTrack"
+            track.Size = UDim2.new(1, 0, 0, 14) -- Thicker height (14px)
+            track.Position = UDim2.new(0, 0, 0, 20)
+            track.BackgroundColor3 = Color3.fromRGB(30, 30, 34) -- Dark gray track background
+            track.BorderSizePixel = 0 -- Sharp corners
+            track.Text = ""
+            track.AutoButtonColor = false
+            track.ZIndex = 10
+            track.Parent = row
+            
+            local trackStroke = Instance.new("UIStroke")
+            trackStroke.Thickness = 1.0
+            trackStroke.Color = Color3.fromRGB(0, 0, 0) -- Solid Black outline
+            trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            trackStroke.LineJoinMode = Enum.LineJoinMode.Miter -- Perfect 90-degree sharp corners
+            trackStroke.Parent = track
+            
+            -- Slider active progress fill bar
+            local fill = Instance.new("Frame")
+            fill.Name = "SliderFill"
+            fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+            fill.BackgroundColor3 = Color3.fromRGB(140, 25, 35) -- Crimson Fill
+            fill.BorderSizePixel = 0 -- Sharp fill corners
+            fill.ZIndex = 11
+            fill.Parent = track
+            
+            -- Dynamic value preview text centered inside the slider
+            local valLabel = Instance.new("TextLabel")
+            valLabel.Name = "SliderValue"
+            valLabel.Size = UDim2.new(1, 0, 1, 0)
+            valLabel.Position = UDim2.new(0, 0, 0, 0)
+            valLabel.BackgroundTransparency = 1
+            valLabel.Text = tostring(value) .. "%"
+            valLabel.TextColor3 = Color3.fromRGB(220, 220, 225)
+            valLabel.TextSize = 10
+            valLabel.Font = Enum.Font.SourceSansBold
+            valLabel.TextXAlignment = Enum.TextXAlignment.Center
+            valLabel.TextYAlignment = Enum.TextYAlignment.Center
+            valLabel.ZIndex = 12 -- Renders over the fill bar
+            valLabel.Parent = track
+            
+            local function update(input)
+                local trackSizeX = track.AbsoluteSize.X
+                if trackSizeX > 0 then
+                    local relativeX = input.Position.X - track.AbsolutePosition.X
+                    local scale = math.clamp(relativeX / trackSizeX, 0, 1)
+                    local val = math.floor(min + (max - min) * scale + 0.5)
+                    
+                    fill.Size = UDim2.new(scale, 0, 1, 0)
+                    valLabel.Text = tostring(val) .. "%"
+                    value = val
+                    
+                    if callback then
+                        task.spawn(callback, val)
+                    end
+                end
+            end
+            
+            track.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    update(input)
+                end
+            end)
+            
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    update(input)
+                end
+            end)
+            
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+        end
+        
+        -- Add ToggleSlider Combo Component to Page
+        -- col = 1 (left), 2 (middle), 3 (right). Defaults to 1.
+        -- Fits perfectly inline: Checkbox on left, label in middle, value and sharp slider bar on right.
+        function Tab:AddToggleSlider(text, defaultState, min, max, defaultVal, callbackState, callbackVal, col)
+            local target = cols[col or 1]
+            local enabled = defaultState or false
+            local value = defaultVal or min
+            local dragging = false
+            
+            local row = Instance.new("Frame")
+            row.Name = "ToggleSliderRow"
+            row.Size = UDim2.new(1, -8, 0, 24)
+            row.BackgroundTransparency = 1
+            row.Parent = target
+            
+            -- Left side trigger area for Toggle interaction
+            local toggleTrigger = Instance.new("TextButton")
+            toggleTrigger.Name = "ToggleTrigger"
+            toggleTrigger.Size = UDim2.new(0.45, 0, 1, 0) -- Decreased from 0.6 to 0.45 to give slider more space
+            toggleTrigger.BackgroundTransparency = 1
+            toggleTrigger.Text = ""
+            toggleTrigger.Parent = row
+            
+            -- Small checkbox square (12x12px, sharp corners)
+            local box = Instance.new("Frame")
+            box.Name = "ToggleBox"
+            box.Size = UDim2.new(0, 12, 0, 12)
+            box.Position = UDim2.new(0, 0, 0.5, -6)
+            box.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+            box.BorderSizePixel = 0
+            box.Parent = toggleTrigger
+            
+            local boxStroke = Instance.new("UIStroke")
+            boxStroke.Thickness = 1.0
+            boxStroke.Color = Color3.fromRGB(140, 25, 35)
+            boxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            boxStroke.LineJoinMode = Enum.LineJoinMode.Miter -- Perfect sharp corners
+            boxStroke.Parent = box
+            
+            local label = Instance.new("TextLabel")
+            label.Name = "ToggleLabel"
+            label.Size = UDim2.new(1, -18, 1, 0)
+            label.Position = UDim2.new(0, 18, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = text
+            label.TextColor3 = Color3.fromRGB(200, 200, 205) -- Always bright white-gray
+            label.TextSize = 12
+            label.Font = Enum.Font.SourceSansBold
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = toggleTrigger
+            
+            -- Slider track bar (X-aligned on the right side) - Thicker (14px) and black outline
+            local track = Instance.new("TextButton")
+            track.Name = "SliderTrack"
+            track.Size = UDim2.new(0.55, -8, 0, 14) -- Increased thickness to 14px, took remaining width
+            track.Position = UDim2.new(0.45, 6, 0.5, -7) -- Centered vertically
+            track.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+            track.BorderSizePixel = 0
+            track.Text = ""
+            track.AutoButtonColor = false
+            track.ZIndex = 10
+            track.Parent = row
+            
+            local trackStroke = Instance.new("UIStroke")
+            trackStroke.Thickness = 1.0
+            trackStroke.Color = Color3.fromRGB(0, 0, 0) -- Solid Black Outline
+            trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            trackStroke.LineJoinMode = Enum.LineJoinMode.Miter -- Perfect 90-degree sharp corners
+            trackStroke.Parent = track
+            
+            -- Progress fill
+            local fill = Instance.new("Frame")
+            fill.Name = "SliderFill"
+            fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+            fill.BackgroundColor3 = Color3.fromRGB(140, 25, 35)
+            fill.BorderSizePixel = 0
+            fill.ZIndex = 11
+            fill.Parent = track
+            
+            -- Value text centered inside the slider
+            local valLabel = Instance.new("TextLabel")
+            valLabel.Name = "SliderValue"
+            valLabel.Size = UDim2.new(1, 0, 1, 0)
+            valLabel.Position = UDim2.new(0, 0, 0, 0)
+            valLabel.BackgroundTransparency = 1
+            valLabel.Text = tostring(value) .. "%"
+            valLabel.TextColor3 = Color3.fromRGB(200, 200, 205) -- Always bright white-gray
+            valLabel.TextSize = 10
+            valLabel.Font = Enum.Font.SourceSansBold
+            valLabel.TextXAlignment = Enum.TextXAlignment.Center
+            valLabel.TextYAlignment = Enum.TextYAlignment.Center
+            valLabel.ZIndex = 12 -- Renders over the fill
+            valLabel.Parent = track
+            
+            local function refresh(instant)
+                local targetBoxColor = enabled and Color3.fromRGB(140, 25, 35) or Color3.fromRGB(30, 30, 34)
+                
+                if instant then
+                    box.BackgroundColor3 = targetBoxColor
+                else
+                    TweenService:Create(box, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        BackgroundColor3 = targetBoxColor
+                    }):Play()
+                end
+            end
+            
+            local function updateSlider(input)
+                local trackSizeX = track.AbsoluteSize.X
+                if trackSizeX > 0 then
+                    local relativeX = input.Position.X - track.AbsolutePosition.X
+                    local scale = math.clamp(relativeX / trackSizeX, 0, 1)
+                    local val = math.floor(min + (max - min) * scale + 0.5)
+                    
+                    fill.Size = UDim2.new(scale, 0, 1, 0)
+                    valLabel.Text = tostring(val) .. "%"
+                    value = val
+                    
+                    if callbackVal then
+                        task.spawn(callbackVal, val)
+                    end
+                end
+            end
+            
+            toggleTrigger.MouseButton1Click:Connect(function()
+                enabled = not enabled
+                
+                -- Pop animation
+                TweenService:Create(box, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 10, 0, 10),
+                    Position = UDim2.new(0, 1, 0.5, -5)
+                }):Play()
+                task.wait(0.08)
+                TweenService:Create(box, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 12, 0, 12),
+                    Position = UDim2.new(0, 0, 0.5, -6)
+                }):Play()
+                
+                refresh(false)
+                if callbackState then
+                    task.spawn(callbackState, enabled)
+                end
+            end)
+            
+            track.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    updateSlider(input)
+                end
+            end)
+            
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    updateSlider(input)
+                end
+            end)
+            
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+            
+            refresh()
+        end
+        
+        -- Add Dropdown Component
+        function Tab:AddDropdown(text, options, default, callback, col)
+            local target = cols[col or 1]
+            local expanded = false
+            local selected = default or options[1]
+            
+            local container = Instance.new("Frame")
+            container.Name = "DropdownContainer"
+            container.Size = UDim2.new(1, -8, 0, 26)
+            container.BackgroundTransparency = 1
+            container.ClipsDescendants = true
+            container.Parent = target
+            
+            local mainBtn = Instance.new("TextButton")
+            mainBtn.Name = "DropdownMain"
+            mainBtn.Size = UDim2.new(1, 0, 0, 26)
+            mainBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+            mainBtn.BorderSizePixel = 0
+            mainBtn.Text = ""
+            mainBtn.AutoButtonColor = false
+            mainBtn.Parent = container
+            
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = Color3.fromRGB(140, 25, 35) -- Red outline
+            stroke.Thickness = 1.0
+            stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            stroke.LineJoinMode = Enum.LineJoinMode.Miter
+            stroke.Parent = mainBtn
+            
+            local titleLabel = Instance.new("TextLabel")
+            titleLabel.Size = UDim2.new(1, -24, 1, 0)
+            titleLabel.Position = UDim2.new(0, 8, 0, 0)
+            titleLabel.BackgroundTransparency = 1
+            titleLabel.Text = text .. " : " .. tostring(selected)
+            titleLabel.TextColor3 = Color3.fromRGB(200, 200, 205)
+            titleLabel.TextSize = 12
+            titleLabel.Font = Enum.Font.SourceSansBold
+            titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            titleLabel.Parent = mainBtn
+            
+            local arrow = Instance.new("TextLabel")
+            arrow.Size = UDim2.new(0, 20, 1, 0)
+            arrow.Position = UDim2.new(1, -20, 0, 0)
+            arrow.BackgroundTransparency = 1
+            arrow.Text = "+"
+            arrow.TextColor3 = Color3.fromRGB(140, 25, 35)
+            arrow.TextSize = 14
+            arrow.Font = Enum.Font.SourceSansBold
+            arrow.Parent = mainBtn
+            
+            local listFrame = Instance.new("Frame")
+            listFrame.Size = UDim2.new(1, 0, 0, #options * 22)
+            listFrame.Position = UDim2.new(0, 0, 0, 26)
+            listFrame.BackgroundTransparency = 1
+            listFrame.Parent = container
+            
+            local listLayout = Instance.new("UIListLayout")
+            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            listLayout.Parent = listFrame
+            
+            for i, opt in ipairs(options) do
+                local optBtn = Instance.new("TextButton")
+                optBtn.Size = UDim2.new(1, 0, 0, 22)
+                optBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+                optBtn.BorderSizePixel = 0
+                optBtn.Text = "  " .. tostring(opt)
+                optBtn.TextColor3 = Color3.fromRGB(170, 170, 175)
+                optBtn.TextSize = 12
+                optBtn.Font = Enum.Font.SourceSansBold
+                optBtn.TextXAlignment = Enum.TextXAlignment.Left
+                optBtn.AutoButtonColor = false
+                optBtn.Parent = listFrame
+                
+                optBtn.MouseEnter:Connect(function()
+                    TweenService:Create(optBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(36, 36, 42), TextColor3 = Color3.fromRGB(200, 200, 205)}):Play()
+                end)
+                optBtn.MouseLeave:Connect(function()
+                    if selected ~= opt then
+                        TweenService:Create(optBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(25, 25, 28), TextColor3 = Color3.fromRGB(170, 170, 175)}):Play()
+                    end
+                end)
+                
+                optBtn.MouseButton1Click:Connect(function()
+                    selected = opt
+                    titleLabel.Text = text .. " : " .. tostring(selected)
+                    expanded = false
+                    TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(1, -8, 0, 26)
+                    }):Play()
+                    arrow.Text = "+"
+                    if callback then task.spawn(callback, selected) end
+                    
+                    -- Reset all buttons color to show which is selected
+                    for _, child in ipairs(listFrame:GetChildren()) do
+                        if child:IsA("TextButton") then
+                            if child.Text == "  " .. tostring(opt) then
+                                TweenService:Create(child, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(36, 36, 42), TextColor3 = Color3.fromRGB(220, 220, 225)}):Play()
+                            else
+                                TweenService:Create(child, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 28), TextColor3 = Color3.fromRGB(170, 170, 175)}):Play()
+                            end
+                        end
+                    end
+                end)
+            end
+            
+            -- Set initial selected color
+            for _, child in ipairs(listFrame:GetChildren()) do
+                if child:IsA("TextButton") and child.Text == "  " .. tostring(selected) then
+                    child.BackgroundColor3 = Color3.fromRGB(36, 36, 42)
+                    child.TextColor3 = Color3.fromRGB(220, 220, 225)
+                end
+            end
+            
+            mainBtn.MouseButton1Click:Connect(function()
+                expanded = not expanded
+                local targetHeight = expanded and (26 + #options * 22) or 26
+                arrow.Text = expanded and "-" or "+"
+                TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, -8, 0, targetHeight)
+                }):Play()
+            end)
+        end
+        
+        return Tab
+    end
+    
+    -- Custom UI Mouse Lock Loop
+    -- Bypasses shooter-game camera scripts that lock the default cursor to the center of the screen.
+    local cursorConnection
+    local function updateCursor()
+        if screenGui.Enabled and mainFrame.Visible then
+            UserInputService.MouseIconEnabled = true
+            
+            if not cursorConnection then
+                cursorConnection = RunService.RenderStepped:Connect(function()
+                    -- If the player is holding Right Mouse Button (standard shooter camera rotation),
+                    -- allow the game's camera scripts to lock/hide the mouse so they can rotate the view.
+                    -- Otherwise, force Default behavior to unlock mouse to interact with the GUI.
+                    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                        -- Do nothing, let camera pan
+                    else
+                        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+                    end
+                end)
+            end
+        else
+            if cursorConnection then
+                cursorConnection:Disconnect()
+                cursorConnection = nil
+            end
+        end
+    end
+    
+    screenGui:GetPropertyChangedSignal("Enabled"):Connect(updateCursor)
+    mainFrame:GetPropertyChangedSignal("Visible"):Connect(updateCursor)
+    
+    -- Initialize cursor state immediately
+    updateCursor()
+    
+    -- Make the entire window draggable (still dragging the main outermost frame)
+    makeDraggable(mainFrame)
+    
+    -- Toggle UI visibility keybind (Insert, RightShift, or RightControl)
+    -- Bypasses the processed flag to make sure it opens even if the client/game captures the shift/ctrl key.
+    local toggleConnection = UserInputService.InputBegan:Connect(function(input, processed)
+        local key = input.KeyCode
+        if key == Enum.KeyCode.Insert or key == Enum.KeyCode.RightShift or key == Enum.KeyCode.RightControl then
+            screenGui.Enabled = not screenGui.Enabled
+        end
+    end)
+    
+    -- FLOATING INTRO SCREEN (No black background cover, game is fully visible, text is huge)
+    local splashGui = Instance.new("ScreenGui")
+    splashGui.Name = "InventorySplash"
+    splashGui.ResetOnSpawn = false
+    splashGui.Parent = parent
+    
+    local splashFrame = Instance.new("Frame")
+    splashFrame.Name = "SplashFrame"
+    splashFrame.Size = UDim2.new(1, 0, 1, 0)
+    splashFrame.BackgroundTransparency = 1 -- Completely transparent background (no darkening of game screen)
+    splashFrame.BorderSizePixel = 0
+    splashFrame.ZIndex = 100
+    splashFrame.Parent = splashGui
+    
+    local splashTitle = Instance.new("TextLabel")
+    splashTitle.Name = "SplashTitle"
+    splashTitle.Size = UDim2.new(1, 0, 0, 90)
+    splashTitle.Position = UDim2.new(0.5, 0, 0.45, -50) -- Adjusted position for massive text size
+    splashTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+    splashTitle.BackgroundTransparency = 1
+    splashTitle.Text = "D E A D   H U B"
+    splashTitle.TextColor3 = Color3.fromRGB(15, 15, 15) -- Pure Black letters
+    splashTitle.TextSize = 80 -- Massive text size (almost fullscreen!)
+    splashTitle.Font = Enum.Font.SourceSansBold
+    splashTitle.TextTransparency = 1
+    splashTitle.ZIndex = 101
+    splashTitle.Parent = splashFrame
+    
+    local splashTitleStroke = Instance.new("UIStroke")
+    splashTitleStroke.Thickness = 3.0 -- Thicker outline to read clearly over game graphics
+    splashTitleStroke.Color = Color3.fromRGB(140, 25, 35) -- Matching Darker Crimson Red
+    splashTitleStroke.Transparency = 1
+    splashTitleStroke.Parent = splashTitle
+    
+    local splashSub = Instance.new("TextLabel")
+    splashSub.Name = "SplashSub"
+    splashSub.Size = UDim2.new(1, 0, 0, 36)
+    splashSub.Position = UDim2.new(0.5, 0, 0.45, 40)
+    splashSub.AnchorPoint = Vector2.new(0.5, 0.5)
+    splashSub.BackgroundTransparency = 1
+    splashSub.Text = "p r o j e c t"
+    splashSub.TextColor3 = Color3.fromRGB(15, 15, 15)
+    splashSub.TextSize = 30 -- Enlarged subtitle
+    splashSub.Font = Enum.Font.SourceSansBold
+    splashSub.TextTransparency = 1
+    splashSub.ZIndex = 101
+    splashSub.Parent = splashFrame
+    
+    local splashSubStroke = Instance.new("UIStroke")
+    splashSubStroke.Thickness = 1.8
+    splashSubStroke.Color = Color3.fromRGB(140, 25, 35)
+    splashSubStroke.Transparency = 1
+    splashSubStroke.Parent = splashSub
+    
+    -- Splash Animation Thread
+    task.spawn(function()
+        task.wait(0.3)
+        -- Fade In text directly over game graphics
+        local fadeInInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(splashTitle, fadeInInfo, {TextTransparency = 0}):Play()
+        TweenService:Create(splashTitleStroke, fadeInInfo, {Transparency = 0}):Play()
+        TweenService:Create(splashSub, fadeInInfo, {TextTransparency = 0}):Play()
+        TweenService:Create(splashSubStroke, fadeInInfo, {Transparency = 0}):Play()
+        
+        task.wait(2.0) -- Stay visible
+        
+        -- Fade Out text
+        local fadeOutInfo = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(splashTitle, fadeOutInfo, {TextTransparency = 1}):Play()
+        TweenService:Create(splashTitleStroke, fadeOutInfo, {Transparency = 1}):Play()
+        TweenService:Create(splashSub, fadeOutInfo, {TextTransparency = 1}):Play()
+        TweenService:Create(splashSubStroke, fadeOutInfo, {Transparency = 1}):Play()
+        
+        task.wait(1.3)
+        splashGui:Destroy()
+        
+        -- Play user-provided "ting" sound when main GUI opens
+        pcall(function()
+            local sound = Instance.new("Sound")
+            sound.Name = "OpenSound"
+            sound.SoundId = "rbxassetid://9113421646" -- Sound ID chosen by the user
+            sound.Volume = 1.0
+            sound.Parent = screenGui
+            sound:Play()
+            sound.Ended:Connect(function()
+                sound:Destroy()
+            end)
+        end)
+        
+        -- Smoothly open the main GUI with a scale-in animation
+        mainFrame.Size = UDim2.new(0, 0, 0, 0)
+        mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        mainFrame.Visible = true
+        
+        local openTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 580, 0, 430),
+            Position = UDim2.new(0.5, -290, 0.5, -215)
+        })
+        openTween:Play()
+    end)
+    
+    -- Unload function
+    function Window:Destroy()
+        pcall(function()
+            if cursorConnection then cursorConnection:Disconnect() end
+            UserInputService.MouseIconEnabled = true
+            toggleConnection:Disconnect()
+            screenGui:Destroy()
+        end)
+    end
+    
+    return Window
+end
+
+return Library
